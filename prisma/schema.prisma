@@ -1,0 +1,279 @@
+// Janus — multi-tenant rental screening platform.
+// Source of truth: ../../../home/dadier/Sync/Averoigne/Projects/Janus/build-spec.md
+//
+// Tenant root is Organization. Every other tenant-scoped table reaches an
+// Organization through the relations defined below; queries must be scoped at
+// the application layer (tRPC middleware) and ideally also via Postgres RLS.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")  // pooled (PgBouncer :6543) — used at runtime
+  directUrl = env("DIRECT_URL")    // direct (:5432) — used by migrations
+}
+
+// ───────────────────────────── enums ─────────────────────────────
+
+enum Role {
+  OWNER
+  ADMIN
+  REVIEWER
+}
+
+enum ApplicationStatus {
+  DRAFT
+  PAID
+  IN_PROGRESS
+  DECISIONED
+  WITHDRAWN
+}
+
+enum StackedDecision {
+  APPROVED
+  CONDITIONAL_DOUBLE_DEPOSIT
+  DENIED
+  MANUAL_REVIEW
+}
+
+enum ApplicantRole {
+  PRIMARY
+  CO_APPLICANT
+}
+
+enum InviteStatus {
+  PENDING
+  STARTED
+  COMPLETED
+}
+
+enum IndividualDecision {
+  PASS
+  FAIL
+  DOUBLE_DEPOSIT_FLAG
+}
+
+enum ReferenceType {
+  EMPLOYMENT
+  LANDLORD
+}
+
+enum ReferenceStatus {
+  REQUESTED
+  RESPONDED
+  NO_RESPONSE
+}
+
+enum DocumentType {
+  BANK_STATEMENT
+  PAYSTUB
+  ID
+  SECTION8_VOUCHER
+  OTHER
+}
+
+// ────────────────────────── tenant root ──────────────────────────
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users             User[]
+  properties        Property[]
+  applicationConfig ApplicationConfig?
+}
+
+model User {
+  id             String       @id @default(cuid())
+  // Maps to Supabase auth.users.id. We keep our own User row so we can
+  // attach org/role + audit trails without touching the auth schema.
+  authId         String       @unique
+  email          String       @unique
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role           Role
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
+}
+
+model Property {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // Public slug used in /apply/{slug} URLs.
+  slug           String       @unique
+  // Address
+  addressLine1   String
+  addressLine2   String?
+  city           String
+  state          String
+  postalCode     String
+  // Jurisdiction string for cap lookups, e.g. "US-CA", "US-NY", "US-CA-SF".
+  jurisdiction   String
+  // Terms (cents)
+  rentCents      Int
+  depositCents   Int
+  bedrooms       Int
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  applications Application[]
+
+  @@index([organizationId])
+}
+
+model ApplicationConfig {
+  id                    String       @id @default(cuid())
+  organizationId        String       @unique
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  minCreditScore        Int          @default(600)
+  incomeMultiplier      Float        @default(3.0)
+  // Default fee in cents. Per-property fee may be lower if jurisdiction caps require it.
+  applicationFeeCents   Int          @default(7500)
+  evictionLookbackYears Int          @default(7)
+  // Offense category strings; never blanket-deny. HUD individualized assessment applies.
+  disqualifyingOffenses String[]     @default([])
+  // Cap pulled from jurisdiction lookup at write time. < 2 disables auto double-deposit.
+  maxDepositMonths      Int          @default(2)
+  // Per-bedroom occupancy ceiling.
+  occupancyCap          Int          @default(2)
+  // FCRA dispute window minimum is 2 years.
+  dataRetentionDays     Int          @default(730)
+  updatedAt             DateTime     @updatedAt
+}
+
+// ──────────────────────────── application ────────────────────────────
+
+model Application {
+  id                      String            @id @default(cuid())
+  propertyId              String
+  property                Property          @relation(fields: [propertyId], references: [id])
+  status                  ApplicationStatus @default(DRAFT)
+  primaryApplicantId      String?           @unique
+  primaryApplicant        Applicant?        @relation("PrimaryApplicant", fields: [primaryApplicantId], references: [id])
+  // Stacked income (cents) — sum across all completed applicants.
+  totalMonthlyIncomeCents Int?
+  stackedDecision         StackedDecision?
+  decisionReason          String?
+  decisionedAt            DateTime?
+  isSection8              Boolean           @default(false)
+  // { phaName, voucherCents, tenantPortionCents, caseworkerName, caseworkerEmail, caseworkerPhone }
+  voucherInfo             Json?
+  feePaidAt               DateTime?
+  stripeSessionId         String?
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+
+  applicants Applicant[] @relation("ApplicationApplicants")
+  auditLogs  AuditLog[]
+
+  @@index([propertyId])
+  @@index([status])
+}
+
+model Applicant {
+  id            String        @id @default(cuid())
+  applicationId String
+  application   Application   @relation("ApplicationApplicants", fields: [applicationId], references: [id], onDelete: Cascade)
+  // The other side of Application.primaryApplicant. Exactly one Applicant per
+  // Application can fill this slot (enforced by Application.primaryApplicantId @unique).
+  primaryOf     Application?  @relation("PrimaryApplicant")
+  role          ApplicantRole
+  email         String
+  phone         String?
+  // PII — encrypted at the app layer via lib/crypto.ts (AES-256-GCM with PII_ENCRYPTION_KEY).
+  // Never log. Never return in API responses except masked.
+  ssnEncrypted  String?
+  dob           DateTime?
+  currentAddress String?
+  // Co-applicant invite — primary applicant emails this token; co-applicant
+  // lands at /apply/co/{inviteToken} to start their own mini-flow.
+  inviteToken   String?       @unique
+  inviteStatus  InviteStatus  @default(PENDING)
+  // CRA results (populated post-screening).
+  creditScore   Int?
+  // [{ type: string, date: ISO, description: string }]
+  criminalFlags Json?
+  evictionFlags Json?
+  // Verified income (cents/month) — Plaid result or doc-OCR result, whichever is higher.
+  verifiedMonthlyIncomeCents Int?
+  individualDecision IndividualDecision?
+  // Each applicant pays their own fee.
+  feePaidAt     DateTime?
+  stripeSessionId String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  references       Reference[]
+  documents        Document[]
+  screeningReports ScreeningReport[]
+
+  @@index([applicationId])
+}
+
+model Reference {
+  id                String          @id @default(cuid())
+  applicantId       String
+  applicant         Applicant       @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  type              ReferenceType
+  contactName       String
+  contactEmail      String
+  contactPhone      String?
+  // Tokenized public URL. No login required — rate-limited per token.
+  verificationToken String          @unique
+  status            ReferenceStatus @default(REQUESTED)
+  responseData      Json?
+  requestedAt       DateTime        @default(now())
+  respondedAt       DateTime?
+
+  @@index([applicantId])
+}
+
+model Document {
+  id          String       @id @default(cuid())
+  applicantId String
+  applicant   Applicant    @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  type        DocumentType
+  // Path inside the Supabase Storage bucket; never exposed directly — served via signed URL.
+  storagePath String
+  // Textract / OCR provider output. Shape depends on document type.
+  ocrResult   Json?
+  uploadedAt  DateTime     @default(now())
+
+  @@index([applicantId])
+}
+
+model ScreeningReport {
+  id          String    @id @default(cuid())
+  applicantId String
+  applicant   Applicant @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  // "stub" in dev; "transunion_smartmove" or similar in prod.
+  provider    String
+  // Raw provider payload, retained for FCRA audit.
+  rawPayload  Json
+  fetchedAt   DateTime  @default(now())
+
+  @@index([applicantId])
+}
+
+model AuditLog {
+  id            String      @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  // "user" | "system" | "applicant" | "reference"
+  actorType     String
+  actorId       String?
+  // e.g. "status_changed", "report_pulled", "decision_overridden", "consent_signed"
+  event         String
+  before        Json?
+  after         Json?
+  createdAt     DateTime    @default(now())
+
+  @@index([applicationId])
+  @@index([createdAt])
+}
