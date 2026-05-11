@@ -1,0 +1,189 @@
+/* Janus — design tokens
+ * One trust-anchor primary. Warm paper. Restrained semantic colors that
+ * work for colorblind users (teal / amber-bronze / brick — never pure red/green).
+ */
+
+:root {
+  /* Surfaces — warm, papery */
+  --paper: #f7f5f0;
+  --surface: #ffffff;
+  --surface-2: #f3f0e9;
+  --surface-3: #ece8df;
+  --hairline: rgba(20, 23, 31, 0.08);
+  --hairline-strong: rgba(20, 23, 31, 0.16);
+  --hairline-soft: rgba(20, 23, 31, 0.05);
+
+  /* Ink */
+  --ink: #14171f;
+  --ink-2: #3d4453;
+  --ink-3: #6c7383;
+  --ink-4: #9aa0ac;
+
+  /* Primary — deep navy */
+  --primary: #1e3a5f;
+  --primary-hover: #294b75;
+  --primary-press: #15294a;
+  --primary-soft: rgba(30, 58, 95, 0.07);
+  --primary-soft-2: rgba(30, 58, 95, 0.14);
+  --on-primary: #ffffff;
+
+  /* Semantic — desaturated, calm, distinguishable by hue + shape */
+  --ok: #0f766e;      /* teal — approved, verified, on track */
+  --ok-soft: #d4ebe8;
+  --ok-tint: #ecf6f4;
+
+  --warn: #a76310;    /* amber-bronze — conditional, careful */
+  --warn-soft: #f5e3c6;
+  --warn-tint: #faf1de;
+
+  --bad: #9b3838;     /* brick — denied, flagged */
+  --bad-soft: #f0d4d4;
+  --bad-tint: #f7e7e7;
+
+  --info: #3d4d6b;    /* slate — pending, in progress */
+  --info-soft: #dde2eb;
+  --info-tint: #ecf0f5;
+
+  /* Radii */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+
+  /* Shadows */
+  --sh-1: 0 1px 2px rgba(20, 23, 31, 0.04);
+  --sh-2: 0 1px 3px rgba(20, 23, 31, 0.05), 0 8px 24px rgba(20, 23, 31, 0.05);
+  --sh-pop: 0 12px 40px rgba(20, 23, 31, 0.14);
+
+  /* Type */
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "JetBrains Mono", monospace;
+}
+
+/* Dark mode — only used inside the reviewer surface */
+.dark {
+  --paper: #0f141b;
+  --surface: #171d25;
+  --surface-2: #1e252f;
+  --surface-3: #262e3a;
+  --hairline: rgba(232, 236, 244, 0.08);
+  --hairline-strong: rgba(232, 236, 244, 0.16);
+  --hairline-soft: rgba(232, 236, 244, 0.04);
+
+  --ink: #e8ecf4;
+  --ink-2: #b6bccb;
+  --ink-3: #8990a0;
+  --ink-4: #5b6273;
+
+  --primary: #6a9adf;
+  --primary-hover: #82adea;
+  --primary-press: #5a8ad0;
+  --primary-soft: rgba(106, 154, 223, 0.13);
+  --primary-soft-2: rgba(106, 154, 223, 0.22);
+  --on-primary: #0f141b;
+
+  --ok: #45b8a8;
+  --ok-soft: rgba(69, 184, 168, 0.18);
+  --ok-tint: rgba(69, 184, 168, 0.10);
+
+  --warn: #d99441;
+  --warn-soft: rgba(217, 148, 65, 0.22);
+  --warn-tint: rgba(217, 148, 65, 0.12);
+
+  --bad: #d97070;
+  --bad-soft: rgba(217, 112, 112, 0.20);
+  --bad-tint: rgba(217, 112, 112, 0.10);
+
+  --info: #8a96ad;
+  --info-soft: rgba(138, 150, 173, 0.18);
+  --info-tint: rgba(138, 150, 173, 0.10);
+}
+
+/* Base reset for our prototype container */
+.janus-root,
+.janus-root * {
+  box-sizing: border-box;
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11", "tnum";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.janus-root {
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.45;
+  letter-spacing: -0.005em;
+}
+
+/* Tabular nums — financial data, scores, dollars, dates */
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* Reset for buttons */
+.janus-root button {
+  font-family: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  letter-spacing: inherit;
+}
+
+.janus-root input,
+.janus-root textarea,
+.janus-root select {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+}
+
+.janus-root a {
+  color: var(--primary);
+  text-decoration: none;
+}
+.janus-root a:hover { text-decoration: underline; }
+
+/* Custom scrollbars in dark-mode reviewer surfaces */
+.dark ::-webkit-scrollbar { width: 10px; height: 10px; }
+.dark ::-webkit-scrollbar-thumb { background: var(--hairline-strong); border-radius: 10px; }
+.dark ::-webkit-scrollbar-track { background: transparent; }
+
+/* Subtle paper texture — almost imperceptible warmth */
+.paper-texture {
+  background-image:
+    radial-gradient(circle at 25% 30%, rgba(180, 160, 120, 0.025) 0, transparent 40%),
+    radial-gradient(circle at 75% 70%, rgba(120, 140, 180, 0.02) 0, transparent 45%);
+}
+
+/* Animations */
+@keyframes janus-fade {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes janus-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+@keyframes janus-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes janus-progress-stripe {
+  to { background-position: 24px 0; }
+}
+
+.fade-in { animation: janus-fade 280ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+/* Inside applicant screens: prevent fixed-height blocks from being squished
+   by the parent flex column. */
+.ascreen-content > * { flex-shrink: 0; }
+
+/* Focus rings */
+.janus-root :focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* Direct-edit overrides slot lives at the end of Janus.html */

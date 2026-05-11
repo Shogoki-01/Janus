@@ -1,6 +1,15 @@
 # Janus — Design Comps
 
-This folder holds single-file HTML mockups for every screen, **before** any React component is written.
+This folder holds single-file HTML mockups for every screen, **before** any React component is written. It also contains the canonical product prototype that the design system was extracted from.
+
+## Authoritative design references
+
+| Source | What it is |
+|---|---|
+| `~/Sync/Averoigne/Projects/Janus/Janus Design.md` | The **design skill** — visual posture, tokens summary, component patterns, applicant + reviewer UX rules, stale-prototype-copy corrections for the MVP. Read this before any UI work. |
+| `src/styles/tokens.css` | The CSS-variable token source. Copied verbatim from `prototype/tokens.css` (warm paper, navy primary, colorblind-safe semantic palette). Don't fork — extend by adding tokens, not by duplicating. |
+| `prototype/` | The full React + CSS prototype that the design language was extracted from. Reference implementation for components, layouts, and motion. **JSX, not TSX — not built or shipped; reference only.** |
+| `NN-screen-name.html` | Per-screen comps for AI iteration. Cheaper feedback loop than React. |
 
 ## Why HTML mockups
 
