@@ -4,12 +4,20 @@
 // Invariant: when ANY required input is missing, return MANUAL_REVIEW. Never
 // auto-approve or auto-deny on partial data. This is non-negotiable per
 // build-spec.md ("Things to get right that AI tools often miss").
+//
+// MVP shape: criminal flags are landlord-categorized (NONE/MINOR/MAJOR) from
+// the SmartMove PDF, eviction is a boolean. There is no eviction lookback
+// window — any reported eviction routes to MANUAL_REVIEW (HUD-aligned). The
+// landlord ingests the SmartMove report manually; see
+// src/lib/providers/screening.ts.
 
 export type StackedDecision =
   | "APPROVED"
   | "CONDITIONAL_DOUBLE_DEPOSIT"
   | "DENIED"
   | "MANUAL_REVIEW";
+
+export type CriminalSeverity = "NONE" | "MINOR" | "MAJOR";
 
 export type DecisionResult = {
   result: StackedDecision;
@@ -21,33 +29,21 @@ export type DecisionResult = {
   factors: string[];
 };
 
-export type CriminalFlag = {
-  /** Offense category. Match against config.disqualifyingOffenses. */
-  type: string;
-  date: string; // ISO
-  description?: string;
-};
-
-export type EvictionFlag = {
-  date: string; // ISO
-  description?: string;
-};
-
 export type DecisionApplicantInput = {
   id: string;
   /** Verified monthly income in cents. Null = not yet verified. */
   verifiedMonthlyIncomeCents: number | null;
-  /** Null = no credit pulled or no score returned. */
+  /** Null = no SmartMove report ingested yet. */
   creditScore: number | null;
-  criminalFlags: CriminalFlag[] | null;
-  evictionFlags: EvictionFlag[] | null;
+  /** Null = no SmartMove report ingested yet. */
+  hasCriminalFlags: CriminalSeverity | null;
+  /** Null = no SmartMove report ingested yet. */
+  hasEvictionFlags: boolean | null;
 };
 
 export type DecisionConfigInput = {
   minCreditScore: number;
   incomeMultiplier: number;
-  evictionLookbackYears: number;
-  disqualifyingOffenses: string[];
   /**
    * Jurisdiction-derived deposit cap (in months of rent). When < 2, the
    * engine cannot recommend a double-deposit conditional approval and
@@ -65,8 +61,9 @@ export type DecisionApplicationInput = {
   config: DecisionConfigInput;
   /**
    * When false, the engine refuses to decide on the grounds that not every
-   * applicant has finished their portion of the workflow. The caller computes
-   * this from invite + payment + screening status.
+   * applicant has finished their portion of the workflow (paid platform fee,
+   * uploaded docs, completed identity verification, submitted SmartMove
+   * report). The caller computes this from the per-applicant state.
    */
   allApplicantsComplete: boolean;
 };
@@ -119,43 +116,37 @@ export function decide(input: DecisionApplicationInput): DecisionResult {
   const incomePass = totalIncomeCents >= requiredIncomeCents;
 
   // ── 3. Average credit score across applicants with a score ──
-  const scoredApplicants = applicants.filter((a) => a.creditScore !== null);
-  if (scoredApplicants.length === 0) {
-    return manual("No credit scores returned for any applicant");
+  // We require every applicant to have a SmartMove report ingested before
+  // deciding. Anything else means the landlord still has work to do.
+  if (applicants.some((a) => a.creditScore === null)) {
+    return manual("SmartMove report not yet ingested for every applicant");
   }
   const avgCredit =
-    scoredApplicants.reduce((sum, a) => sum + (a.creditScore as number), 0) /
-    scoredApplicants.length;
+    (applicants as Array<Required<DecisionApplicantInput> & { creditScore: number }>).reduce(
+      (sum, a) => sum + (a.creditScore as number),
+      0
+    ) / applicants.length;
 
   // ── 4. Hard-fail flags ──
   // Per HUD 2016 guidance + 2022 update: blanket criminal bans are
-  // prohibited. We route any disqualifying-offense match to MANUAL_REVIEW so
-  // a human performs the individualized assessment. We never auto-deny.
-  if (applicants.some((a) => a.criminalFlags === null)) {
-    return manual("Criminal-background check not returned for every applicant");
+  // prohibited. We route any MAJOR-severity flag to MANUAL_REVIEW so a human
+  // performs the individualized assessment. We never auto-deny.
+  if (applicants.some((a) => a.hasCriminalFlags === null)) {
+    return manual("Criminal-background categorization missing for every applicant");
   }
-  const criminalHit = applicants.flatMap((a) =>
-    (a.criminalFlags ?? []).filter((f) =>
-      config.disqualifyingOffenses.includes(f.type)
-    )
-  );
-  const hasDisqualifyingCriminal = criminalHit.length > 0;
+  if (applicants.some((a) => a.hasEvictionFlags === null)) {
+    return manual("Eviction flag missing for every applicant");
+  }
 
-  if (applicants.some((a) => a.evictionFlags === null)) {
-    return manual("Eviction history not returned for every applicant");
-  }
-  const lookbackMs = config.evictionLookbackYears * 365 * 24 * 60 * 60 * 1000;
-  const now = Date.now();
-  const recentEviction = applicants.some((a) =>
-    (a.evictionFlags ?? []).some(
-      (f) => now - new Date(f.date).getTime() < lookbackMs
-    )
+  const majorCriminalApplicants = applicants.filter(
+    (a) => a.hasCriminalFlags === "MAJOR"
   );
+  const evictionApplicants = applicants.filter((a) => a.hasEvictionFlags === true);
 
   // ── 5. Decision tree ──
   const factors = [
     `Stacked income ${formatUSD(totalIncomeCents)}/mo vs required ${formatUSD(requiredIncomeCents)} (${incomeBasisLabel})`,
-    `Average credit score ${Math.round(avgCredit)} across ${scoredApplicants.length} applicant(s)`,
+    `Average credit score ${Math.round(avgCredit)} across ${applicants.length} applicant(s)`,
   ];
 
   if (!incomePass) {
@@ -169,26 +160,24 @@ export function decide(input: DecisionApplicationInput): DecisionResult {
     };
   }
 
-  if (hasDisqualifyingCriminal) {
+  if (majorCriminalApplicants.length > 0) {
     return {
       result: "MANUAL_REVIEW",
-      reason: "Criminal flag — individualized assessment required (HUD guidance)",
+      reason: "Criminal flag — individualized assessment required per HUD guidance",
       factors: [
         ...factors,
-        `Matched offense categor${criminalHit.length === 1 ? "y" : "ies"}: ${criminalHit
-          .map((f) => f.type)
-          .join(", ")}`,
+        `${majorCriminalApplicants.length} applicant(s) flagged MAJOR by landlord review of SmartMove PDF`,
       ],
     };
   }
 
-  if (recentEviction) {
+  if (evictionApplicants.length > 0) {
     return {
-      result: "DENIED",
-      reason: "Recent eviction within lookback window",
+      result: "MANUAL_REVIEW",
+      reason: "Eviction record found — individualized review",
       factors: [
         ...factors,
-        `Eviction lookback window: ${config.evictionLookbackYears} year(s)`,
+        `${evictionApplicants.length} applicant(s) with eviction history on SmartMove report`,
       ],
     };
   }

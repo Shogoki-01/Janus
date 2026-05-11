@@ -4,6 +4,13 @@
 // Tenant root is Organization. Every other tenant-scoped table reaches an
 // Organization through the relations defined below; queries must be scoped at
 // the application layer (tRPC middleware) and ideally also via Postgres RLS.
+//
+// MVP architecture note: credit/criminal/eviction reports are NOT pulled
+// inside this app. TransUnion SmartMove is a manual handoff — the applicant
+// pays TransUnion direct (~$40), the landlord manually re-enters key fields
+// (credit_score, hasCriminalFlags severity, hasEvictionFlags bool,
+// bankruptcies) and uploads the PDF. The ScreeningProvider interface in
+// src/lib/providers/screening.ts is built to v2-swap to a real CRA API.
 
 generator client {
   provider = "prisma-client-js"
@@ -26,7 +33,10 @@ enum Role {
 enum ApplicationStatus {
   DRAFT
   PAID
-  IN_PROGRESS
+  // Applicant has paid our platform fee + completed our steps, now waiting on
+  // the landlord to invite them through SmartMove and re-ingest the report.
+  AWAITING_SCREENING_REPORT
+  IN_REVIEW
   DECISIONED
   WITHDRAWN
 }
@@ -55,6 +65,23 @@ enum IndividualDecision {
   DOUBLE_DEPOSIT_FLAG
 }
 
+// Per-applicant state of the SmartMove handoff.
+enum ScreeningStatus {
+  NOT_STARTED
+  INVITED
+  REPORT_RECEIVED
+  ERROR
+}
+
+// Three-state categorization the landlord assigns when reading the SmartMove
+// PDF. MAJOR routes the application to MANUAL_REVIEW per HUD individualized
+// assessment guidance — we never auto-deny on a criminal flag.
+enum CriminalSeverity {
+  NONE
+  MINOR
+  MAJOR
+}
+
 enum ReferenceType {
   EMPLOYMENT
   LANDLORD
@@ -71,6 +98,7 @@ enum DocumentType {
   PAYSTUB
   ID
   SECTION8_VOUCHER
+  SMARTMOVE_REPORT
   OTHER
 }
 
@@ -97,6 +125,8 @@ model User {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   role           Role
   createdAt      DateTime     @default(now())
+
+  ingestedReports ScreeningReport[] @relation("IngestedBy")
 
   @@index([organizationId])
 }
@@ -128,23 +158,22 @@ model Property {
 }
 
 model ApplicationConfig {
-  id                    String       @id @default(cuid())
-  organizationId        String       @unique
-  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  minCreditScore        Int          @default(600)
-  incomeMultiplier      Float        @default(3.0)
-  // Default fee in cents. Per-property fee may be lower if jurisdiction caps require it.
-  applicationFeeCents   Int          @default(7500)
-  evictionLookbackYears Int          @default(7)
-  // Offense category strings; never blanket-deny. HUD individualized assessment applies.
-  disqualifyingOffenses String[]     @default([])
+  id                String       @id @default(cuid())
+  organizationId    String       @unique
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // Decision-engine thresholds.
+  minCreditScore    Int          @default(600)
+  incomeMultiplier  Float        @default(3.0)
   // Cap pulled from jurisdiction lookup at write time. < 2 disables auto double-deposit.
-  maxDepositMonths      Int          @default(2)
-  // Per-bedroom occupancy ceiling.
-  occupancyCap          Int          @default(2)
+  maxDepositMonths  Int          @default(2)
+  // Per-bedroom occupancy ceiling (informational at MVP; not yet wired into engine).
+  occupancyCap      Int          @default(2)
+  // Our platform fee, charged via Stripe Checkout. $30 default. Applicant pays
+  // TransUnion separately (~$40) for the actual screening report.
+  platformFeeCents  Int          @default(3000)
   // FCRA dispute window minimum is 2 years.
-  dataRetentionDays     Int          @default(730)
-  updatedAt             DateTime     @updatedAt
+  dataRetentionDays Int          @default(730)
+  updatedAt         DateTime     @updatedAt
 }
 
 // ──────────────────────────── application ────────────────────────────
@@ -164,7 +193,10 @@ model Application {
   isSection8              Boolean           @default(false)
   // { phaName, voucherCents, tenantPortionCents, caseworkerName, caseworkerEmail, caseworkerPhone }
   voucherInfo             Json?
-  feePaidAt               DateTime?
+  // Application-level platform-fee payment is unused at MVP (each applicant
+  // pays their own — see Applicant.platformFeePaidAt). Kept for future
+  // "billed-to-landlord" mode.
+  platformFeePaidAt       DateTime?
   stripeSessionId         String?
   createdAt               DateTime          @default(now())
   updatedAt               DateTime          @updatedAt
@@ -188,26 +220,36 @@ model Applicant {
   phone         String?
   // PII — encrypted at the app layer via lib/crypto.ts (AES-256-GCM with PII_ENCRYPTION_KEY).
   // Never log. Never return in API responses except masked.
-  ssnEncrypted  String?
-  dob           DateTime?
+  ssnEncrypted   String?
+  dob            DateTime?
   currentAddress String?
   // Co-applicant invite — primary applicant emails this token; co-applicant
   // lands at /apply/co/{inviteToken} to start their own mini-flow.
-  inviteToken   String?       @unique
-  inviteStatus  InviteStatus  @default(PENDING)
-  // CRA results (populated post-screening).
-  creditScore   Int?
-  // [{ type: string, date: ISO, description: string }]
-  criminalFlags Json?
-  evictionFlags Json?
+  inviteToken    String?       @unique
+  inviteStatus   InviteStatus  @default(PENDING)
+  // ── SmartMove handoff state ──
+  // Per-applicant state of the manual SmartMove flow. Updated by the
+  // SmartMoveManualProvider as the landlord moves the applicant through the
+  // invite → report-received lifecycle.
+  screeningStatus            ScreeningStatus @default(NOT_STARTED)
+  smartmoveInviteSentAt      DateTime?
+  smartmoveReportReceivedAt  DateTime?
+  // ── Screening results (populated by landlord-manual ingest at MVP) ──
+  // Categorized by the landlord reading the SmartMove PDF. Drives the decision
+  // engine's hard-fail check (MAJOR → MANUAL_REVIEW). Null = not yet ingested.
+  hasCriminalFlags           CriminalSeverity?
+  // Boolean (Yes/No on the SmartMove PDF). Any true value routes to MANUAL_REVIEW.
+  hasEvictionFlags           Boolean?
+  creditScore                Int?
+  bankruptcies               Int?
   // Verified income (cents/month) — Plaid result or doc-OCR result, whichever is higher.
   verifiedMonthlyIncomeCents Int?
-  individualDecision IndividualDecision?
-  // Each applicant pays their own fee.
-  feePaidAt     DateTime?
-  stripeSessionId String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  individualDecision         IndividualDecision?
+  // Each applicant pays their own platform fee + their own TransUnion fee.
+  platformFeePaidAt          DateTime?
+  stripeSessionId            String?
+  createdAt                  DateTime      @default(now())
+  updatedAt                  DateTime      @updatedAt
 
   references       Reference[]
   documents        Document[]
@@ -245,6 +287,10 @@ model Document {
   ocrResult   Json?
   uploadedAt  DateTime     @default(now())
 
+  // When this Document is the uploaded SmartMove PDF, this back-relation links
+  // to the ScreeningReport that ingested it.
+  screeningReport ScreeningReport? @relation("ScreeningReportPdf")
+
   @@index([applicantId])
 }
 
@@ -252,11 +298,20 @@ model ScreeningReport {
   id          String    @id @default(cuid())
   applicantId String
   applicant   Applicant @relation(fields: [applicantId], references: [id], onDelete: Cascade)
-  // "stub" in dev; "transunion_smartmove" or similar in prod.
+  // "smartmove_manual" at MVP. Future values: "tazworks", "rentprep", etc.
   provider    String
-  // Raw provider payload, retained for FCRA audit.
-  rawPayload  Json
-  fetchedAt   DateTime  @default(now())
+  // Matches the NormalizedScreeningReport interface in src/lib/providers/screening.ts:
+  // { credit_score, resident_score, has_criminal_records, criminal_flags[],
+  //   has_eviction_records, eviction_flags[], bankruptcies, raw_pdf_url,
+  //   provider, fetched_at }
+  normalizedData Json
+  // Optional link to the uploaded PDF Document (DocumentType.SMARTMOVE_REPORT).
+  rawPdfDocumentId String?   @unique
+  rawPdfDocument   Document? @relation("ScreeningReportPdf", fields: [rawPdfDocumentId], references: [id])
+  // Which landlord/admin entered the report data.
+  ingestedByUserId String?
+  ingestedByUser   User?     @relation("IngestedBy", fields: [ingestedByUserId], references: [id])
+  ingestedAt       DateTime  @default(now())
 
   @@index([applicantId])
 }
@@ -268,7 +323,7 @@ model AuditLog {
   // "user" | "system" | "applicant" | "reference"
   actorType     String
   actorId       String?
-  // e.g. "status_changed", "report_pulled", "decision_overridden", "consent_signed"
+  // e.g. "status_changed", "report_ingested", "decision_overridden", "consent_signed"
   event         String
   before        Json?
   after         Json?
