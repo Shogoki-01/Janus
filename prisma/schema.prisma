@@ -1,5 +1,5 @@
 // Janus — multi-tenant rental screening platform.
-// Source of truth: ../../../home/dadier/Sync/Averoigne/Projects/Janus/build-spec.md
+// Source of truth: ~/Sync/Averoigne/Projects/Janus/build-spec.md
 //
 // Tenant root is Organization. Every other tenant-scoped table reaches an
 // Organization through the relations defined below; queries must be scoped at
