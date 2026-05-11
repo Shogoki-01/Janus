@@ -3,129 +3,181 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Janus — Rental screening that decides while applicants still care</title>
+  <title>Janus — Rental screening that decides in under an hour</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
+    // Aligned to src/styles/tokens.css (canonical). Don't fork — extend.
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            ink: { 950: '#0a0a0b', 900: '#111114', 800: '#1c1c22', 700: '#2a2a33', 500: '#6b6b78', 300: '#c8c8d0', 100: '#f4f4f6' },
-            sand: { 50: '#fbfaf7', 100: '#f5f3ec', 200: '#ebe7da' },
-            accent: { 500: '#d97757', 600: '#c5613f' }
+            paper: '#f7f5f0',
+            surface: '#ffffff',
+            surface2: '#f3f0e9',
+            surface3: '#ece8df',
+            ink: { DEFAULT: '#14171f', 2: '#3d4453', 3: '#6c7383', 4: '#9aa0ac' },
+            primary: { DEFAULT: '#1e3a5f', hover: '#294b75', press: '#15294a' },
+            ok: { DEFAULT: '#0f766e', tint: '#ecf6f4', soft: '#d4ebe8' },
+            warn: { DEFAULT: '#a76310', tint: '#faf1de', soft: '#f5e3c6' },
+            bad: { DEFAULT: '#9b3838', tint: '#f7e7e7', soft: '#f0d4d4' },
+            info: { DEFAULT: '#3d4d6b', tint: '#ecf0f5', soft: '#dde2eb' },
           },
           fontFamily: {
-            display: ['ui-serif', 'Georgia', 'Cambria', 'serif'],
-            sans: ['ui-sans-serif', 'system-ui', 'Inter', 'sans-serif']
-          }
+            sans: ['Geist', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            mono: ['"Geist Mono"', 'ui-monospace', 'monospace'],
+          },
+          borderColor: {
+            hairline: 'rgba(20, 23, 31, 0.08)',
+            'hairline-strong': 'rgba(20, 23, 31, 0.16)',
+          },
         }
       }
     }
   </script>
   <style>
     html { scroll-behavior: smooth; }
-    .grain { background-image: radial-gradient(rgba(0,0,0,0.04) 1px, transparent 1px); background-size: 4px 4px; }
+    body {
+      font-feature-settings: "ss01", "cv11", "tnum";
+      letter-spacing: -0.005em;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    .tnum { font-variant-numeric: tabular-nums; }
+    .paper-texture {
+      background-image:
+        radial-gradient(circle at 25% 30%, rgba(180, 160, 120, 0.025) 0, transparent 40%),
+        radial-gradient(circle at 75% 70%, rgba(120, 140, 180, 0.020) 0, transparent 45%);
+    }
+    .hairline-b { border-bottom: 1px solid rgba(20, 23, 31, 0.08); }
+    .hairline { border: 1px solid rgba(20, 23, 31, 0.08); }
+    .sh-1 { box-shadow: 0 1px 2px rgba(20, 23, 31, 0.04); }
+    .sh-2 { box-shadow: 0 1px 3px rgba(20, 23, 31, 0.05), 0 8px 24px rgba(20, 23, 31, 0.05); }
   </style>
 </head>
-<body class="bg-sand-50 text-ink-900 font-sans antialiased">
+<body class="bg-paper text-ink font-sans">
 
   <!-- NAV -->
-  <header class="border-b border-sand-200">
+  <header class="hairline-b">
     <div class="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
-      <a href="#" class="flex items-center gap-2">
-        <span class="inline-block w-7 h-7 rounded-full bg-ink-950 text-sand-50 grid place-items-center font-display text-sm">J</span>
-        <span class="font-display text-xl tracking-tight">Janus</span>
+      <a href="#" class="flex items-center gap-2.5">
+        <span class="inline-grid place-items-center w-7 h-7 rounded-[8px] bg-primary text-white font-semibold text-[13px]">J</span>
+        <span class="font-semibold text-[17px] tracking-tight">Janus</span>
       </a>
-      <nav class="hidden sm:flex items-center gap-7 text-sm text-ink-700">
-        <a href="#how" class="hover:text-ink-950">How it works</a>
-        <a href="#policy" class="hover:text-ink-950">Policies</a>
-        <a href="#pricing" class="hover:text-ink-950">Pricing</a>
-        <a href="#" class="hover:text-ink-950">Sign in</a>
+      <nav class="hidden sm:flex items-center gap-7 text-sm text-ink-2">
+        <a href="#how" class="hover:text-ink">How it works</a>
+        <a href="#pricing" class="hover:text-ink">Pricing</a>
+        <a href="#policy" class="hover:text-ink">Policies</a>
+        <a href="#" class="hover:text-ink">Sign in</a>
       </nav>
-      <a href="#" class="text-sm bg-ink-950 text-sand-50 px-4 py-2 rounded-full hover:bg-ink-800">Start free</a>
+      <a href="#" class="text-sm bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-[8px] font-medium">Start free</a>
     </div>
   </header>
 
   <!-- HERO -->
-  <section class="relative overflow-hidden">
-    <div class="absolute inset-0 grain opacity-60 pointer-events-none"></div>
-    <div class="max-w-6xl mx-auto px-5 sm:px-8 pt-16 pb-20 sm:pt-24 sm:pb-28 relative">
-      <p class="text-xs uppercase tracking-[0.18em] text-ink-500 mb-5">Multi-tenant rental screening</p>
-      <h1 class="font-display text-4xl sm:text-6xl leading-[1.05] tracking-tight max-w-3xl">
-        Decide on an applicant <span class="italic text-accent-600">before they lose interest.</span>
+  <section class="paper-texture">
+    <div class="max-w-6xl mx-auto px-5 sm:px-8 pt-16 pb-20 sm:pt-24 sm:pb-28">
+      <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-3 mb-5">
+        Multi-tenant rental screening
+      </p>
+      <h1 class="text-4xl sm:text-[56px] sm:leading-[1.04] leading-[1.08] tracking-tight max-w-3xl font-semibold">
+        Decide on a rental applicant in under an hour — with reasoning you can stand behind.
       </h1>
-      <p class="mt-6 text-lg text-ink-700 max-w-xl">
-        Janus takes a rental application from "submitted" to "approved, conditional, or denied" in under an hour — with identity, credit, criminal, eviction, income, and references stitched into one decision you can defend.
+      <p class="mt-6 text-[17px] leading-7 text-ink-2 max-w-xl">
+        Janus runs application intake, identity verification, income evidence, references, and a policy-driven recommendation. The credit, criminal, and eviction report is run by TransUnion — applicant pays them directly. We never mark it up.
       </p>
       <div class="mt-9 flex flex-col sm:flex-row gap-3">
-        <a href="#" class="bg-ink-950 text-sand-50 px-6 py-3.5 rounded-full text-sm font-medium hover:bg-ink-800 text-center">Screen your first applicant</a>
-        <a href="#how" class="border border-ink-300 text-ink-900 px-6 py-3.5 rounded-full text-sm font-medium hover:bg-sand-100 text-center">See the workflow</a>
+        <a href="#" class="bg-primary hover:bg-primary-hover text-white px-6 py-3.5 rounded-[8px] text-sm font-medium text-center">
+          Screen your first applicant
+        </a>
+        <a href="#how" class="hairline text-ink px-6 py-3.5 rounded-[8px] text-sm font-medium hover:bg-surface2 text-center">
+          See the workflow
+        </a>
       </div>
-      <p class="mt-5 text-xs text-ink-500">No setup fee. Applicant pays the screening cost. You pay only the SaaS subscription.</p>
+      <p class="mt-5 text-xs text-ink-3">
+        Free to start. <span class="tnum">$30</span> Janus platform fee per applicant · TransUnion screening (<span class="tnum">~$40</span>) is paid directly to TransUnion.
+      </p>
 
-      <!-- Hero card -->
-      <div class="mt-14 rounded-2xl border border-sand-200 bg-white shadow-sm overflow-hidden">
+      <!-- Decision card example -->
+      <div class="mt-14 rounded-[14px] hairline bg-surface sh-2 overflow-hidden">
         <div class="grid grid-cols-1 md:grid-cols-[1.1fr_1fr]">
-          <div class="p-6 sm:p-8 border-b md:border-b-0 md:border-r border-sand-200">
+          <div class="p-6 sm:p-8 hairline-b md:border-b-0 md:border-r border-[rgba(20,23,31,0.08)]">
             <div class="flex items-center justify-between">
-              <p class="text-xs uppercase tracking-[0.18em] text-ink-500">Application · #A-1041</p>
-              <span class="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-800">Approved</span>
+              <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-3">
+                Application · <span class="font-mono text-[11px]">A-1041</span>
+              </p>
+              <span class="inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full bg-ok-tint text-ok border border-[rgba(15,118,110,0.20)]">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Approved
+              </span>
             </div>
-            <h3 class="font-display text-2xl mt-3">Marisol Tran &amp; David Okafor</h3>
-            <p class="text-sm text-ink-500">1422 Linden St, Unit 3 · $2,450/mo</p>
+            <h3 class="text-[22px] mt-3 font-semibold tracking-tight">Marisol Tran &amp; David Okafor</h3>
+            <p class="text-sm text-ink-3 mt-0.5">1422 Linden St, Unit 3 · <span class="tnum">$2,450</span>/mo</p>
 
-            <dl class="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-              <dt class="text-ink-500">Combined income</dt><dd class="text-right text-ink-900">$9,840 / mo <span class="text-emerald-700">(4.0×)</span></dd>
-              <dt class="text-ink-500">Credit (lowest)</dt><dd class="text-right text-ink-900">712 · <span class="text-emerald-700">Good</span></dd>
-              <dt class="text-ink-500">Identity match</dt><dd class="text-right text-ink-900">Verified · selfie + ID</dd>
-              <dt class="text-ink-500">Evictions (7y)</dt><dd class="text-right text-ink-900">0</dd>
-              <dt class="text-ink-500">Income source</dt><dd class="text-right text-ink-900">Plaid · 2 employers</dd>
-              <dt class="text-ink-500">References</dt><dd class="text-right text-ink-900">2 of 2 returned</dd>
+            <dl class="mt-5 grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
+              <dt class="text-ink-3">Stacked income</dt>
+              <dd class="text-right text-ink tnum"><span class="font-medium">$9,840</span>/mo <span class="text-ok">(4.0×)</span></dd>
+              <dt class="text-ink-3">Required (3×)</dt>
+              <dd class="text-right text-ink tnum">$7,350/mo</dd>
+              <dt class="text-ink-3">Credit (lowest)</dt>
+              <dd class="text-right text-ink tnum"><span class="font-medium">712</span> · <span class="text-ok">above 600 floor</span></dd>
+              <dt class="text-ink-3">Identity</dt>
+              <dd class="text-right text-ink">Verified · selfie + ID</dd>
+              <dt class="text-ink-3">Eviction history</dt>
+              <dd class="text-right text-ink">None reported</dd>
+              <dt class="text-ink-3">Criminal flags</dt>
+              <dd class="text-right text-ink">None reported</dd>
+              <dt class="text-ink-3">Income source</dt>
+              <dd class="text-right text-ink">3 bank statements · 2 paystubs</dd>
+              <dt class="text-ink-3">References</dt>
+              <dd class="text-right text-ink"><span class="tnum">2</span> of <span class="tnum">2</span> returned</dd>
             </dl>
 
-            <div class="mt-6 pt-5 border-t border-sand-200">
-              <p class="text-xs uppercase tracking-[0.18em] text-ink-500 mb-2">Recommendation reasoning</p>
-              <p class="text-sm text-ink-700 leading-relaxed">
-                Combined income clears the 3× threshold with margin. Both applicants pass identity verification and have clean eviction history. Lowest credit score is above the 650 policy floor. Current landlord (24 months) confirms on-time rent. <span class="text-ink-500">No conditions recommended.</span>
+            <div class="mt-6 pt-5 border-t border-[rgba(20,23,31,0.08)]">
+              <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-3 mb-2">Recommendation reasoning</p>
+              <p class="text-sm text-ink-2 leading-relaxed">
+                Combined income clears the <span class="tnum">3×</span> threshold with margin. Lowest credit is above the 600 floor. Identity verified for both applicants. No eviction or criminal flags on the TransUnion report. Current landlord (<span class="tnum">24</span> months) confirms on-time rent.
               </p>
             </div>
           </div>
-          <div class="p-6 sm:p-8 bg-sand-50">
-            <p class="text-xs uppercase tracking-[0.18em] text-ink-500">Timeline</p>
-            <ol class="mt-4 space-y-4 text-sm">
+          <div class="p-6 sm:p-8 bg-surface2">
+            <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-3">Timeline</p>
+            <ol class="mt-4 space-y-3.5 text-sm">
               <li class="flex gap-3">
-                <span class="w-1.5 h-1.5 rounded-full bg-ink-950 mt-2 shrink-0"></span>
+                <span class="mt-2 shrink-0 w-1.5 h-1.5 rounded-full bg-ink"></span>
                 <div>
-                  <p class="text-ink-900">Application submitted</p>
-                  <p class="text-ink-500 text-xs">10:14 AM · today</p>
+                  <p class="text-ink">Application submitted</p>
+                  <p class="text-ink-3 text-[12px] tnum">10:14 AM · today</p>
                 </div>
               </li>
               <li class="flex gap-3">
-                <span class="w-1.5 h-1.5 rounded-full bg-ink-950 mt-2 shrink-0"></span>
+                <span class="mt-2 shrink-0 w-1.5 h-1.5 rounded-full bg-ink"></span>
                 <div>
-                  <p class="text-ink-900">Identity verified · screening fee paid</p>
-                  <p class="text-ink-500 text-xs">10:18 AM</p>
+                  <p class="text-ink">Identity verified · platform fee paid</p>
+                  <p class="text-ink-3 text-[12px] tnum">10:18 AM</p>
                 </div>
               </li>
               <li class="flex gap-3">
-                <span class="w-1.5 h-1.5 rounded-full bg-ink-950 mt-2 shrink-0"></span>
+                <span class="mt-2 shrink-0 w-1.5 h-1.5 rounded-full bg-ink"></span>
                 <div>
-                  <p class="text-ink-900">Credit + criminal + eviction returned</p>
-                  <p class="text-ink-500 text-xs">10:23 AM</p>
+                  <p class="text-ink">Income docs uploaded (bank + paystubs)</p>
+                  <p class="text-ink-3 text-[12px] tnum">10:23 AM</p>
                 </div>
               </li>
               <li class="flex gap-3">
-                <span class="w-1.5 h-1.5 rounded-full bg-ink-950 mt-2 shrink-0"></span>
+                <span class="mt-2 shrink-0 w-1.5 h-1.5 rounded-full bg-ink"></span>
                 <div>
-                  <p class="text-ink-900">Income verified via Plaid</p>
-                  <p class="text-ink-500 text-xs">10:31 AM</p>
+                  <p class="text-ink">Applicant completed TransUnion report</p>
+                  <p class="text-ink-3 text-[12px] tnum">10:31 AM</p>
                 </div>
               </li>
               <li class="flex gap-3">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 mt-2 shrink-0"></span>
+                <span class="mt-2 shrink-0 w-1.5 h-1.5 rounded-full bg-ok"></span>
                 <div>
-                  <p class="text-ink-900">References returned · auto-approved</p>
-                  <p class="text-ink-500 text-xs">10:54 AM · <span class="text-emerald-700">40 min total</span></p>
+                  <p class="text-ink">References returned · auto-approved</p>
+                  <p class="text-ink-3 text-[12px] tnum">10:54 AM · <span class="text-ok">40 min total</span></p>
                 </div>
               </li>
             </ol>
@@ -136,96 +188,182 @@
   </section>
 
   <!-- HOW IT WORKS -->
-  <section id="how" class="border-t border-sand-200 bg-white">
+  <section id="how" class="bg-surface hairline-b" style="border-top: 1px solid rgba(20,23,31,0.08);">
     <div class="max-w-6xl mx-auto px-5 sm:px-8 py-20">
-      <p class="text-xs uppercase tracking-[0.18em] text-ink-500">How Janus works</p>
-      <h2 class="font-display text-3xl sm:text-4xl mt-3 max-w-2xl">One door. Both sides covered.</h2>
+      <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-3">How Janus works</p>
+      <h2 class="text-3xl sm:text-[40px] sm:leading-[1.1] mt-3 max-w-2xl font-semibold tracking-tight">
+        One workflow. Every step accountable.
+      </h2>
 
-      <div class="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <article class="rounded-xl border border-sand-200 p-6">
-          <p class="text-xs text-ink-500">01</p>
-          <h3 class="font-display text-xl mt-2">Branded intake</h3>
-          <p class="text-sm text-ink-700 mt-2 leading-relaxed">Your logo, your link. Mobile-first form, e-signature, applicant pays the screening fee up front via Stripe.</p>
+      <div class="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <article class="rounded-[10px] hairline p-5 bg-surface">
+          <p class="text-[11px] text-ink-3 font-mono">01</p>
+          <h3 class="text-[17px] mt-2 font-semibold">Branded intake</h3>
+          <p class="text-sm text-ink-2 mt-2 leading-relaxed">
+            Your logo, your link. Mobile-first form, two-consent FCRA screen, applicant pays the <span class="tnum">$30</span> Janus platform fee up front.
+          </p>
         </article>
-        <article class="rounded-xl border border-sand-200 p-6">
-          <p class="text-xs text-ink-500">02</p>
-          <h3 class="font-display text-xl mt-2">Identity first</h3>
-          <p class="text-sm text-ink-700 mt-2 leading-relaxed">Selfie + ID match before a single paid report runs. Stops synthetic-identity fraud at the door.</p>
+        <article class="rounded-[10px] hairline p-5 bg-surface">
+          <p class="text-[11px] text-ink-3 font-mono">02</p>
+          <h3 class="text-[17px] mt-2 font-semibold">Identity first</h3>
+          <p class="text-sm text-ink-2 mt-2 leading-relaxed">
+            Selfie + government ID via Stripe Identity. Stops synthetic-identity fraud at the door — before any paid report runs.
+          </p>
         </article>
-        <article class="rounded-xl border border-sand-200 p-6">
-          <p class="text-xs text-ink-500">03</p>
-          <h3 class="font-display text-xl mt-2">Credit · criminal · eviction</h3>
-          <p class="text-sm text-ink-700 mt-2 leading-relaxed">Pulled from a national screening bureau. Returned and parsed automatically — no PDF wrangling.</p>
+        <article class="rounded-[10px] hairline p-5 bg-surface">
+          <p class="text-[11px] text-ink-3 font-mono">03</p>
+          <h3 class="text-[17px] mt-2 font-semibold">Income, evidenced</h3>
+          <p class="text-sm text-ink-2 mt-2 leading-relaxed">
+            Three months of bank statements and two paystubs, parsed by OCR. Stacked across co-applicants, with month-over-month volatility flagged.
+          </p>
         </article>
-        <article class="rounded-xl border border-sand-200 p-6">
-          <p class="text-xs text-ink-500">04</p>
-          <h3 class="font-display text-xl mt-2">Income, the modern way</h3>
-          <p class="text-sm text-ink-700 mt-2 leading-relaxed">Bank + payroll verification via Plaid. Paystub upload as fallback. Multi-source income calculated automatically.</p>
+        <article class="rounded-[10px] hairline p-5 bg-surface">
+          <p class="text-[11px] text-ink-3 font-mono">04</p>
+          <h3 class="text-[17px] mt-2 font-semibold">TransUnion — direct</h3>
+          <p class="text-sm text-ink-2 mt-2 leading-relaxed">
+            Credit, criminal, and eviction are pulled by TransUnion SmartMove. The applicant pays TransUnion <span class="tnum">~$40</span> directly. <span class="text-ink">We never touch screening money.</span>
+          </p>
         </article>
-        <article class="rounded-xl border border-sand-200 p-6">
-          <p class="text-xs text-ink-500">05</p>
-          <h3 class="font-display text-xl mt-2">References without phone tag</h3>
-          <p class="text-sm text-ink-700 mt-2 leading-relaxed">Auto-emailed structured forms to current landlord and employer. Responses live in the dossier.</p>
+        <article class="rounded-[10px] hairline p-5 bg-surface">
+          <p class="text-[11px] text-ink-3 font-mono">05</p>
+          <h3 class="text-[17px] mt-2 font-semibold">References without phone tag</h3>
+          <p class="text-sm text-ink-2 mt-2 leading-relaxed">
+            Tokenized links to current landlord and employer. Structured response forms. No login. Rate limited.
+          </p>
         </article>
-        <article class="rounded-xl border border-sand-200 p-6 bg-ink-950 text-sand-50 border-ink-950">
-          <p class="text-xs text-ink-300">06</p>
-          <h3 class="font-display text-xl mt-2">Decision with reasoning</h3>
-          <p class="text-sm text-ink-300 mt-2 leading-relaxed">Policy-driven recommendation with cited evidence. Override anytime. Every override logged for fair-housing review.</p>
+        <article class="rounded-[10px] p-5 bg-primary text-white" style="border: 1px solid #15294a;">
+          <p class="text-[11px] text-white/60 font-mono">06</p>
+          <h3 class="text-[17px] mt-2 font-semibold">Decision with reasoning</h3>
+          <p class="text-sm text-white/80 mt-2 leading-relaxed">
+            Policy-driven recommendation with cited evidence. Override anytime — every override logged for fair-housing review and FCRA adverse-action notices.
+          </p>
         </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING — transparent breakdown -->
+  <section id="pricing">
+    <div class="max-w-6xl mx-auto px-5 sm:px-8 py-20 grid lg:grid-cols-[1fr_1.05fr] gap-12 items-start">
+      <div>
+        <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-3">Pricing</p>
+        <h2 class="text-3xl sm:text-[40px] sm:leading-[1.1] mt-3 font-semibold tracking-tight">
+          Two line items. No surprises.
+        </h2>
+        <p class="mt-5 text-[17px] leading-7 text-ink-2">
+          The applicant pays the platform fee inside Janus. They pay the screening bureau separately on TransUnion. We don't bundle, mark up, or take a cut of the screening cost.
+        </p>
+        <p class="mt-3 text-sm text-ink-3">
+          Property managers pay nothing per applicant during MVP — start free and add a team subscription when you outgrow it.
+        </p>
+      </div>
+      <div class="rounded-[14px] hairline bg-surface p-6 sm:p-7 sh-1">
+        <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-3 mb-4">What the applicant pays</p>
+        <div class="divide-y divide-[rgba(20,23,31,0.08)] text-sm">
+          <div class="flex items-baseline justify-between py-3.5">
+            <div>
+              <p class="text-ink font-medium">Janus platform fee</p>
+              <p class="text-ink-3 text-[12.5px] mt-0.5">Paid in this app via Stripe Checkout</p>
+            </div>
+            <span class="tnum text-ink font-medium">$30.00</span>
+          </div>
+          <div class="flex items-baseline justify-between py-3.5">
+            <div>
+              <p class="text-ink font-medium">TransUnion screening report</p>
+              <p class="text-ink-3 text-[12.5px] mt-0.5">Paid separately to TransUnion (mysmartmove.com)</p>
+            </div>
+            <span class="tnum text-ink font-medium">~$40.00</span>
+          </div>
+          <div class="flex items-baseline justify-between py-3.5">
+            <p class="text-ink-3 text-[12.5px] uppercase tracking-[0.12em]">Estimated total</p>
+            <span class="tnum text-ink font-semibold">~$70.00</span>
+          </div>
+        </div>
+        <p class="mt-5 text-xs text-ink-3 leading-relaxed">
+          Co-applicants pay their own platform fee and their own TransUnion fee — surfaced clearly during invite. Application fee caps in NY ($20), WI ($25), and other jurisdictions are enforced automatically.
+        </p>
       </div>
     </div>
   </section>
 
   <!-- POLICY -->
-  <section id="policy" class="border-t border-sand-200">
+  <section id="policy" class="hairline-b" style="border-top: 1px solid rgba(20,23,31,0.08);">
     <div class="max-w-6xl mx-auto px-5 sm:px-8 py-20 grid lg:grid-cols-[1fr_1.1fr] gap-12 items-start">
       <div>
-        <p class="text-xs uppercase tracking-[0.18em] text-ink-500">Policies, not gut calls</p>
-        <h2 class="font-display text-3xl sm:text-4xl mt-3">Configure thresholds once. Apply them across every property.</h2>
-        <p class="mt-5 text-ink-700 leading-relaxed">
-          Set your income-to-rent ratio, minimum credit floor, eviction lookback, criminal lookback by category, and occupancy cap. Janus applies them consistently — and shows every applicant exactly which threshold drove the recommendation.
+        <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-3">Policies, not gut calls</p>
+        <h2 class="text-3xl sm:text-[40px] sm:leading-[1.1] mt-3 font-semibold tracking-tight">
+          Configure thresholds once. Apply them across every property.
+        </h2>
+        <p class="mt-5 text-[17px] leading-7 text-ink-2">
+          Set your income-to-rent ratio, credit floor, and deposit policy. Janus applies them consistently — and shows every applicant exactly which threshold drove the recommendation.
         </p>
-        <p class="mt-3 text-sm text-ink-500">Fair-housing friendly: every decision is auditable, every override is timestamped and reasoned.</p>
+        <p class="mt-3 text-sm text-ink-3 leading-relaxed">
+          Section 8 vouchers adjust the income test to the tenant portion automatically (HUD-aligned). Eviction history routes to manual review — never auto-denied. Criminal flags require an individualized assessment per HUD 2016/2022 guidance.
+        </p>
       </div>
-      <div class="rounded-xl border border-sand-200 bg-white p-6 sm:p-7">
-        <p class="text-xs uppercase tracking-[0.18em] text-ink-500 mb-4">Default policy · "Standard residential"</p>
-        <div class="divide-y divide-sand-200 text-sm">
-          <div class="flex justify-between py-3"><span class="text-ink-700">Minimum income-to-rent</span><span class="font-medium">3.0×</span></div>
-          <div class="flex justify-between py-3"><span class="text-ink-700">Minimum credit score</span><span class="font-medium">650</span></div>
-          <div class="flex justify-between py-3"><span class="text-ink-700">Eviction lookback</span><span class="font-medium">7 years</span></div>
-          <div class="flex justify-between py-3"><span class="text-ink-700">Criminal · violent felony</span><span class="font-medium">10 year lookback</span></div>
-          <div class="flex justify-between py-3"><span class="text-ink-700">Occupancy cap</span><span class="font-medium">2 per bedroom</span></div>
-          <div class="flex justify-between py-3"><span class="text-ink-700">Pets · dangerous breeds</span><span class="font-medium">Flag for review</span></div>
+      <div class="rounded-[14px] hairline bg-surface p-6 sm:p-7 sh-1">
+        <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-3 mb-4">Default policy · "Standard residential"</p>
+        <div class="divide-y divide-[rgba(20,23,31,0.08)] text-sm">
+          <div class="flex justify-between py-3">
+            <span class="text-ink-2">Minimum income-to-rent</span>
+            <span class="tnum font-medium text-ink">3.0×</span>
+          </div>
+          <div class="flex justify-between py-3">
+            <span class="text-ink-2">Minimum credit score</span>
+            <span class="tnum font-medium text-ink">600</span>
+          </div>
+          <div class="flex justify-between py-3">
+            <span class="text-ink-2">Section 8 voucher</span>
+            <span class="font-medium text-ink">Tenant-portion test</span>
+          </div>
+          <div class="flex justify-between py-3">
+            <span class="text-ink-2">Eviction record</span>
+            <span class="font-medium text-warn">Manual review</span>
+          </div>
+          <div class="flex justify-between py-3">
+            <span class="text-ink-2">Major criminal flag</span>
+            <span class="font-medium text-warn">Manual review</span>
+          </div>
+          <div class="flex justify-between py-3">
+            <span class="text-ink-2">Occupancy cap</span>
+            <span class="tnum font-medium text-ink">2 / bedroom</span>
+          </div>
         </div>
-        <button class="mt-5 w-full text-sm border border-ink-300 px-4 py-2.5 rounded-full hover:bg-sand-100">Clone &amp; customize per property</button>
+        <button class="mt-5 w-full text-sm hairline px-4 py-2.5 rounded-[8px] hover:bg-surface2">
+          Clone &amp; customize per property
+        </button>
       </div>
     </div>
   </section>
 
-  <!-- PRICING TEASE -->
-  <section id="pricing" class="border-t border-sand-200 bg-ink-950 text-sand-50">
+  <!-- TRUST / CLOSE -->
+  <section class="bg-primary text-white">
     <div class="max-w-6xl mx-auto px-5 sm:px-8 py-20 text-center">
-      <p class="text-xs uppercase tracking-[0.18em] text-ink-300">Pricing</p>
-      <h2 class="font-display text-3xl sm:text-4xl mt-3">Pay for the platform. Applicants pay for the screen.</h2>
-      <p class="mt-5 text-ink-300 max-w-xl mx-auto leading-relaxed">
-        Flat monthly subscription per property manager seat. Screening costs are passed through to the applicant — no per-unit setup tax, no annual contract.
+      <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-white/60">Why landlords trust Janus</p>
+      <h2 class="text-3xl sm:text-[40px] sm:leading-[1.1] mt-3 max-w-2xl mx-auto font-semibold tracking-tight">
+        Encrypted, auditable, fair-housing aware.
+      </h2>
+      <p class="mt-5 text-white/80 max-w-xl mx-auto leading-7">
+        SSNs and financial documents are encrypted at rest. Every decision is logged with reason and timestamp. FCRA adverse-action notices are generated automatically and reference TransUnion as the report furnisher.
       </p>
-      <a href="#" class="inline-block mt-9 bg-accent-500 hover:bg-accent-600 text-ink-950 px-6 py-3.5 rounded-full text-sm font-medium">See pricing</a>
+      <a href="#" class="inline-block mt-9 bg-white text-primary hover:bg-white/90 px-6 py-3.5 rounded-[8px] text-sm font-medium">
+        Start free
+      </a>
     </div>
   </section>
 
   <!-- FOOTER -->
-  <footer class="border-t border-sand-200 bg-sand-50">
-    <div class="max-w-6xl mx-auto px-5 sm:px-8 py-10 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between text-sm text-ink-500">
+  <footer class="bg-paper" style="border-top: 1px solid rgba(20,23,31,0.08);">
+    <div class="max-w-6xl mx-auto px-5 sm:px-8 py-10 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between text-sm text-ink-3">
       <div class="flex items-center gap-2">
-        <span class="inline-block w-5 h-5 rounded-full bg-ink-950 text-sand-50 grid place-items-center font-display text-[10px]">J</span>
-        <span>© Janus · 2026</span>
+        <span class="inline-grid place-items-center w-5 h-5 rounded-[5px] bg-primary text-white font-semibold text-[10px]">J</span>
+        <span class="tnum">© Janus · 2026</span>
       </div>
       <nav class="flex flex-wrap gap-6">
-        <a href="#" class="hover:text-ink-900">Privacy</a>
-        <a href="#" class="hover:text-ink-900">Fair Housing</a>
-        <a href="#" class="hover:text-ink-900">FCRA disclosures</a>
-        <a href="#" class="hover:text-ink-900">Contact</a>
+        <a href="#" class="hover:text-ink">Privacy</a>
+        <a href="#" class="hover:text-ink">Fair Housing</a>
+        <a href="#" class="hover:text-ink">FCRA disclosures</a>
+        <a href="#" class="hover:text-ink">Contact</a>
       </nav>
     </div>
   </footer>

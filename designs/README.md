@@ -37,7 +37,7 @@ This folder holds single-file HTML mockups for every screen, **before** any Reac
 
 | File | Screen | State |
 |---|---|---|
-| `00-landing.html` | Marketing landing page | Starter — concept only, copy is a first draft |
+| `00-landing.html` | Marketing landing page | Aligned to canonical Janus tokens. Copy reflects SmartMove handoff MVP ($30 platform + ~$40 TransUnion, doc-upload income). |
 
 More screens to add as the product takes shape:
 
