@@ -7,16 +7,24 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest",
+    "test:run": "vitest run",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
+    "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio"
   },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.95.2",
     "@prisma/client": "^6.1.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.46.0",
     "next": "16.2.6",
+    "pdf-parse": "^2.4.5",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "zod": "^3.23.8"
@@ -30,6 +38,8 @@
     "eslint-config-next": "16.2.6",
     "prisma": "^6.1.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "tsx": "^4.21.0",
+    "typescript": "^5",
+    "vitest": "^4.1.6"
   }
 }

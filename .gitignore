@@ -42,3 +42,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# Codex CLI marker (empty local-only file)
+.codex
